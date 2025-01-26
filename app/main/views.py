@@ -1,4 +1,4 @@
-#Import All Required library's
+#Import All Required library's 
 from django.shortcuts import render, redirect, get_object_or_404
 
 from .models import Enquiry, Visitor, SolarData, CCTVData, WhatsAppenquiry , Carousel , Project  , Request#  models imported form models.py file
