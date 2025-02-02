@@ -68,10 +68,11 @@ WSGI_APPLICATION = 'app.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.googledrive.com',
-        'NAME': 'vimal',  # Stores the database file in your project directory
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / "db.sqlite3",  # Stores the database file in your project directory
     }
 }
+
 
 
 import os
