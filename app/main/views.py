@@ -70,8 +70,6 @@ from datetime import timedelta
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
 from .models import Enquiry, Visitor, Project, Request
-from .utils import generate_disk_usage_chart, generate_request_bar_chart, calculate_percentage_change
-
 
 # Logger
 logger = logging.getLogger(__name__)
