@@ -75,7 +75,7 @@ from .models import Enquiry, Visitor, Project, Request
 logger = logging.getLogger(__name__)
 
 # Google Drive Service Account Setup
-SERVICE_ACCOUNT_FILE = 'app/app/grand-bank-449713-k7-4a533cf9796a.json'  # Update with actual JSON key path
+SERVICE_ACCOUNT_FILE = 'app/grand-bank-449713-k7-4a533cf9796a.json'  # Update with actual JSON key path
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 drive_service = build('drive', 'v3', credentials=credentials)
