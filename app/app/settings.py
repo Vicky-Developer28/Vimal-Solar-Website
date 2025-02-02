@@ -69,21 +69,10 @@ WSGI_APPLICATION = 'app.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / "db.sqlite3",  # Stores the database file in your project directory
+        'NAME': BASE_DIR / 'db.sqlite3',  # Stores the database file in your project directory
     }
 }
 
-
-
-import os
-
-GOOGLE_DRIVE_STORAGE = {
-    'CLIENT_ID': '1095801645558-ikb5rd9p7v57i7nta47qljh08hpfv8fo.apps.googleusercontent.com',
-    'CLIENT_SECRET': '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',
-    'API_KEY': 'AIzaSyA3kx71DG39tIwtFdFl4T3nl7NHuJGD0DU',
-}
-
-DEFAULT_FILE_STORAGE = 'app.storage_backends.GoogleDriveStorage'
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
