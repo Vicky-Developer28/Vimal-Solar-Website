@@ -1,8 +1,58 @@
 from django.conf import settings
 from django.db import models
-from django.core.validators import RegexValidator
 from django.utils import timezone
-from django.db import models
+from googleapiclient.discovery import build
+from google.oauth2.service_account import Credentials
+from googleapiclient.http import MediaFileUpload
+
+class GoogleDriveFile(models.Model):
+    # Store metadata of the Google Drive file
+    file_name = models.CharField(max_length=255)
+    file_id = models.CharField(max_length=255)  # Google Drive file ID
+    file_url = models.URLField()  # URL to access the file directly
+    uploaded_at = models.DateTimeField(default=timezone.now)
+    
+    # Link to a related model if necessary (e.g., Enquiry or other)
+    enquiry = models.ForeignKey('Enquiry', on_delete=models.CASCADE, related_name="drive_files", null=True, blank=True)
+
+    def __str__(self):
+        return f"File: {self.file_name} ({self.file_id})"
+
+    # Upload to Google Drive via API
+    def upload_to_google_drive(self, file_path):
+        """
+        Uploads the given file to Google Drive and stores metadata in the model
+        """
+        # Authenticate using a service account
+        creds = Credentials.from_service_account_file(
+            settings.GOOGLE_SERVICE_ACCOUNT_FILE,
+            scopes=["https://www.googleapis.com/auth/drive.file"]
+        )
+        
+        # Build the Google Drive API client
+        service = build('drive', 'v3', credentials=creds)
+
+        # Prepare the file metadata
+        file_metadata = {
+            'name': self.file_name,
+            'mimeType': 'application/octet-stream'  # Adjust mime type according to the file
+        }
+
+        # Read the file data
+        media = MediaFileUpload(file_path, mimetype='application/octet-stream')
+
+        # Upload the file to Google Drive
+        file = service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id, webViewLink'
+        ).execute()
+
+        # Update the model with file ID and URL
+        self.file_id = file.get('id')
+        self.file_url = file.get('webViewLink')
+        self.save()
+
 
 class Enquiry(models.Model):
     SERVICE_CHOICES = [
@@ -11,7 +61,7 @@ class Enquiry(models.Model):
         ('cctv', 'CCTV'),
         ('Network System and Networking', 'Network System and Networking'),
     ]
-
+    
     PREMISES_CHOICES = [
         ('Home', 'Home'),
         ('Office', 'Office'),
@@ -45,9 +95,22 @@ class Enquiry(models.Model):
     def __str__(self):
         return f"Enquiry for {self.name} - {self.service_type}"
 
+    def save(self, *args, **kwargs):
+        # Custom save method for handling file upload (if any)
+        super().save(*args, **kwargs)  # First save the Enquiry instance
+        
+        if self.service_type == 'solar' or self.service_type == 'cctv':
+            # Handle Google Drive upload logic for these services
+            drive_file = GoogleDriveFile.objects.create(
+                file_name=f"{self.name}_document.pdf",  # Example: Set a name for your file
+                enquiry=self  # Associate with this enquiry
+            )
+            # Upload the file to Google Drive (for illustration purposes)
+            drive_file.upload_to_google_drive('path/to/file.pdf')  # Replace with actual file path
 
+
+# Other models
 class Visitor(models.Model):
-    
     email = models.EmailField(null=True, blank=True)
     phone_number = models.CharField(max_length=15, null=True, blank=True)  # Allow null values
     ip_address = models.GenericIPAddressField()
@@ -77,8 +140,6 @@ class WhatsAppenquiry(models.Model):
     def __str__(self):
         return f"{self.date} - {self.value}"
     
-from django.db import models
-
 class Carousel(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
@@ -128,16 +189,16 @@ class contact_enquiry(models.Model):
         ('other', 'Other'),
     ]
 
-    name = models.CharField(max_length=100, verbose_name="Full Name" , default='')
+    name = models.CharField(max_length=100, verbose_name="Full Name", default='')
     phone_number = models.CharField(max_length=15, null=False, blank=False)
-    email = models.EmailField(max_length=254, verbose_name="Email Address" , default='')
+    email = models.EmailField(max_length=254, verbose_name="Email Address", default='')
     service_type = models.CharField(
         max_length=10,
         choices=SERVICE_CHOICES,
         default='other',
         verbose_name="Service Type"
     )
-    additional_comments = models.TextField(blank=True, verbose_name="Additional Comments" , default='')
+    additional_comments = models.TextField(blank=True, verbose_name="Additional Comments", default='')
 
     created_at = models.DateTimeField(auto_now_add=True)
 

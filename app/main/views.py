@@ -41,8 +41,56 @@ from openpyxl import Workbook
 
 import json
 
+
+
+
+
+
+
+
+
+
+
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.http import HttpResponse, JsonResponse, Http404
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import login as auth_login, logout, authenticate
+from django.contrib.auth.models import User
+from django.contrib import messages
+from django.utils.timezone import localtime, now
+from django.db.models import Count
+from django.db.models.functions import TruncDate
+import json
+import psutil
+import matplotlib.pyplot as plt
+import base64
+from io import BytesIO
+from datetime import timedelta
+from googleapiclient.discovery import build
+from google.oauth2 import service_account
+from .models import Enquiry, Visitor, Project, Request
+from .utils import generate_disk_usage_chart, generate_request_bar_chart, calculate_percentage_change
+
+
 # Logger
 logger = logging.getLogger(__name__)
+
+# Google Drive Service Account Setup
+SERVICE_ACCOUNT_FILE = 'app/app/grand-bank-449713-k7-4a533cf9796a.json'  # Update with actual JSON key path
+SCOPES = ['https://www.googleapis.com/auth/drive.file']
+credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+drive_service = build('drive', 'v3', credentials=credentials)
+
+def get_drive_file_content(file_id):
+    """Fetch file content from Google Drive (assumed JSON)."""
+    try:
+        request = drive_service.files().get_media(fileId=file_id)
+        content = request.execute()
+        return json.loads(content)
+    except Exception as e:
+        print(f"Error fetching Google Drive file: {e}")
+        return {}
 
 # Public-facing views
 def index(request):
@@ -266,27 +314,31 @@ def delete_project(request, id):
 
 
 # Back-end Admin pages 
+@login_required
 def dashboard(request):
     if not request.user.is_staff:
         return redirect("login")
 
-    # Generate disk usage chart and stats
+    # Generate disk usage chart
     chart_data, used, free, total, mysql_used, mysql_total = generate_disk_usage_chart()
     enquiry_chart = generate_request_bar_chart()
 
-    # Time calculations for last 7 days comparison
+    # Time calculations for last 7 days
     current_time = now()
     seven_days_ago = current_time - timedelta(days=7)
 
-    # Enquiry counts for the last 7 days comparison
-    solar_requests = Enquiry.objects.filter(service_type='solar').count()
-    cctv_requests = Enquiry.objects.filter(service_type='cctv').count()
-    total_visitors = Visitor.objects.count()
+    # Fetch latest data from Google Drive (replace with actual file ID)
+    drive_file_id = 'https://drive.google.com/drive/u/2/folders/18G1Ph8crZx0Eb1TBcRZP0uGnxNLKemMK'  # Replace with actual Google Drive file ID
+    drive_data = get_drive_file_content(drive_file_id)
 
-    # Last 7 days comparison
-    solar_last_week = Enquiry.objects.filter(service_type='solar', timestamp__range=[seven_days_ago, current_time]).count()
-    cctv_last_week = Enquiry.objects.filter(service_type='cctv', timestamp__range=[seven_days_ago, current_time]).count()
-    visitors_last_week = Visitor.objects.filter(visit_time__range=[seven_days_ago, current_time]).count()
+    # Extract values from Google Drive JSON
+    solar_requests = drive_data.get("solar_requests", Enquiry.objects.filter(service_type='solar').count())
+    cctv_requests = drive_data.get("cctv_requests", Enquiry.objects.filter(service_type='cctv').count())
+    total_visitors = drive_data.get("total_visitors", Visitor.objects.count())
+
+    solar_last_week = drive_data.get("solar_last_week", Enquiry.objects.filter(service_type='solar', timestamp__range=[seven_days_ago, current_time]).count())
+    cctv_last_week = drive_data.get("cctv_last_week", Enquiry.objects.filter(service_type='cctv', timestamp__range=[seven_days_ago, current_time]).count())
+    visitors_last_week = drive_data.get("visitors_last_week", Visitor.objects.filter(visit_time__range=[seven_days_ago, current_time]).count())
 
     # Calculate percentage changes
     solar_change = calculate_percentage_change(solar_requests, solar_last_week)
